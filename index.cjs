@@ -27,6 +27,11 @@ function loadDataset() {
 function extractCampaignText(campaignHTML) {
   var $ = cheerio.load(campaignHTML);
 
+  const numVideos = $('video').length;
+  const numIframes = $('iframe').length;
+  const numImages = $('img').length;
+  const mediaNumber = numVideos + numIframes + numImages;
+  
   $('body *').each(function() {
     const element = $(this);
     if (element.text().trim().length > 0) {
@@ -83,9 +88,9 @@ function extractCampaignText(campaignHTML) {
       campaignElement
     );
 
-    console.log(campaignHTML);
+    // console.log(campaignHTML);
     text = extractCampaignText(campaignHTML);
-    console.log(text);
+    // console.log(text);
   }
 
   async function deleteTextFromSearchField() {
@@ -103,6 +108,7 @@ function extractCampaignText(campaignHTML) {
     const result = $(`div:contains("${title}")`);
     return result;
   }
+
   titles = loadDataset();
 
   const browser = await puppeteer.launch({
@@ -117,7 +123,7 @@ function extractCampaignText(campaignHTML) {
   await page.goto("https://kickstarter.com/", { waitUntil: "load" });
 
   for (let title in titles) {
-    const result = await search (titles[title]);
+    const result = await search(titles[title]);
       if (!result.html()) {
         await deleteTextFromSearchField();
         continue;
