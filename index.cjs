@@ -1,6 +1,7 @@
 const he = require("he");
 const cheerio = require("cheerio");
 const puppeteer = require("puppeteer-extra");
+const fs = require("fs");
 
 const campaignSelector = "#react-campaign > section > div > div";
 const videoDivSelector =
@@ -13,6 +14,10 @@ const searchFieldSelector =
   "#global-header > section > div.animation-fade-in.animation-300.animation-easeOutQuart.w100p.t0.l0.absolute.z-guided-search-3.block > div > div > div.p0.flex.z-dropdown-3.relative.shadow-2.items-center > input";
 const searchResultsSelector =
   "#global-header > section > div.animation-fade-in.animation-300.animation-easeOutQuart.w100p.t0.l0.absolute.z-guided-search-3.block > div > div > div.z-dropdown-3.scroll-y.relative.webkit-scrolling.bg-white > ul";
+const videoButtonSelector =
+  "#react-project-header > div > div.grid-container.flex.flex-column > div.grid-row.grid-row.mb5-lg.mb0-md.order1-md.order2-lg > div.grid-col-12.grid-col-8-lg > div.mx-4.mx-12-md.mx0-lg.relative.clip > div > div.aspect-ratio--object.flex.z4 > button";
+const videoTimeSelector =
+  "#react-project-header > div > div.grid-container.flex.flex-column > div.grid-row.grid-row.mb5-lg.mb0-md.order1-md.order2-lg > div.grid-col-12.grid-col-8-lg > div.mx-4.mx-12-md.mx0-lg.relative.clip > div > div > div > div.flex.flex-auto.items-center.mx2 > time.white.type-14.ml2.basis5";
 
 const shortSleepInterval = 5000;
 const mediumSleepInterval = 7000;
@@ -22,11 +27,19 @@ const sleep = (waitTimeInMs) =>
   new Promise((resolve) => setTimeout(resolve, waitTimeInMs));
 
 function loadDataset() {
-  const fs = require("fs");
   let rawdata = fs.readFileSync("titles.json");
   let data = JSON.parse(rawdata);
   return data;
 }
+
+function saveDataset(projects) {
+  let data = JSON.stringify(projects, null, 2);
+  fs.writeFile("titles.json", data, (err) => {
+    if (err) throw err;
+    console.log("Data written to file");
+  });
+}
+
 projects = loadDataset();
 
 function extractCampaignText(campaignHTML) {
@@ -94,11 +107,41 @@ function extractCampaignMediaNumber(campaignHTML) {
       campaignElement
     );
 
+    let hasHeaderVideo = false;
+    let videoLength = 0;
+
+    const videoElement = await page.$(videoButtonSelector);
+
+    // if (videoElement) {
+    //   await page.waitForTimeout(5000); // wait for 5 seconds
+    //   await videoElement.click();
+    //   // rest of the code
+
+    //   await sleep(longSleepInterval);
+    //   const videoTimeElement = await page.$(videoTimeSelector);
+
+    //   let videoHasLength = false;
+    //   do {
+    //     const videoLengthElement = await page.evaluate(
+    //       (element) => element.innerHTML,
+    //       videoTimeElement
+    //     );
+    //     console.log(videoLengthElement);
+    //     if (videoLengthElement != "0:00") {
+    //       videoHasLength = true;
+    //     } else {
+    //       await sleep(longSleepInterval);
+    //     }
+    //   } while (!videoHasLength);
+
+    //   hasHeaderVideo = true;
+    // }
+
     text = extractCampaignText(campaignHTML);
     mediaNumber = extractCampaignMediaNumber(campaignHTML);
 
     projects[index].processed = true;
-    // projects[index].hasHeaderVideo
+    projects[index].hasHeaderVideo = videoElement ? true : false;
     // projects[index].videoLength
     projects[index].descriptionMediaNumber = mediaNumber;
     projects[index].textLength = text.length;
@@ -134,6 +177,8 @@ function extractCampaignMediaNumber(campaignHTML) {
   await page.setViewport({ width: 1920, height: 1080 });
   await page.goto("https://kickstarter.com/", { waitUntil: "load" });
 
+  const fs = require("fs");
+
   for (let index in projects) {
     if (!projects[index].processed) {
       const result = await search(projects[index]);
@@ -144,6 +189,7 @@ function extractCampaignMediaNumber(campaignHTML) {
         await gotToSearchResult(result);
         await analyzeProjectPage(index);
       }
+      saveDataset(projects);
     }
   }
 })();
