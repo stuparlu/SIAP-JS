@@ -15,8 +15,10 @@ const searchFieldSelector =
 const searchResultsSelector =
   "#global-header > section > div.animation-fade-in.animation-300.animation-easeOutQuart.w100p.t0.l0.absolute.z-guided-search-3.block > div > div > div.z-dropdown-3.scroll-y.relative.webkit-scrolling.bg-white > ul";
 const videoButtonSelector =
-  "#react-project-header > div > div.grid-container.flex.flex-column > div.grid-row.grid-row.mb5-lg.mb0-md.order1-md.order2-lg > div.grid-col-12.grid-col-8-lg > div.mx-4.mx-12-md.mx0-lg.relative.clip > div > div.aspect-ratio--object.flex.z4 > button";
-const videoTimeSelector =
+  "#react-project-header > div > div > div.grid-row.grid-row.mb5-lg.mb0-md.order1-md.order2-lg > div.grid-col-12.grid-col-8-lg > div.mx-4.mx-12-md.mx0-lg.relative.clip > div > div.aspect-ratio--object.flex.z4 > button";
+const headerVideoDivSelector = 
+  "#react-project-header > div > div > div.grid-row.grid-row.mb5-lg.mb0-md.order1-md.order2-lg > div.grid-col-12.grid-col-8-lg > div.mx-4.mx-12-md.mx0-lg.relative.clip > div";
+  const videoTimeSelector =
   "#react-project-header > div > div.grid-container.flex.flex-column > div.grid-row.grid-row.mb5-lg.mb0-md.order1-md.order2-lg > div.grid-col-12.grid-col-8-lg > div.mx-4.mx-12-md.mx0-lg.relative.clip > div > div > div > div.flex.flex-auto.items-center.mx2 > time.white.type-14.ml2.basis5";
 
 const shortSleepInterval = 5000;
@@ -90,6 +92,17 @@ function extractCampaignMediaNumber(campaignHTML) {
     return decoded;
   }
 
+  async function getIntegerLengthOfVideo(stringLength) {
+    const timeParts = stringLength.split(':');
+    if (timeParts.length == 1) {
+      return parseInt(timeParts[0]);
+    } else if (timeParts.length == 2) {
+      return 60 *  parseInt(timeParts[0]) + parseInt(timeParts[1]);
+    } else {
+      return 3600 * parseInt(timeParts[2]) + 60 * parseInt(timeParts[1]) + parseInt(timeParts[0]);
+    }
+  }
+
   async function gotToSearchResult(result) {
     $ = cheerio.load(result.parent().html());
     const imgSrc = $("img").attr("src");
@@ -110,39 +123,26 @@ function extractCampaignMediaNumber(campaignHTML) {
     let hasHeaderVideo = false;
     let videoLength = 0;
 
-    const videoElement = await page.$(videoButtonSelector);
-
-    // if (videoElement) {
-    //   await page.waitForTimeout(5000); // wait for 5 seconds
-    //   await videoElement.click();
-    //   // rest of the code
-
-    //   await sleep(longSleepInterval);
-    //   const videoTimeElement = await page.$(videoTimeSelector);
-
-    //   let videoHasLength = false;
-    //   do {
-    //     const videoLengthElement = await page.evaluate(
-    //       (element) => element.innerHTML,
-    //       videoTimeElement
-    //     );
-    //     console.log(videoLengthElement);
-    //     if (videoLengthElement != "0:00") {
-    //       videoHasLength = true;
-    //     } else {
-    //       await sleep(longSleepInterval);
-    //     }
-    //   } while (!videoHasLength);
-
-    //   hasHeaderVideo = true;
-    // }
+    const videoButton = await page.$(videoButtonSelector);
+    if (videoButton) {
+      await videoButton.click();
+      await sleep(longSleepInterval);
+      const headerVideoDiv = await page.$(headerVideoDivSelector);
+      const videoTimeElement = await page.$(videoTimeSelector);
+      const videoLengthElementHTML = await page.evaluate(
+        (element) => element.innerHTML,
+          videoTimeElement
+        );
+      videoLength = await getIntegerLengthOfVideo(videoLengthElementHTML);
+      hasHeaderVideo = true;
+     }
 
     text = extractCampaignText(campaignHTML);
     mediaNumber = extractCampaignMediaNumber(campaignHTML);
 
     projects[index].processed = true;
-    projects[index].hasHeaderVideo = videoElement ? true : false;
-    // projects[index].videoLength
+    projects[index].hasHeaderVideo = videoButton ? true : false;
+    projects[index].videoLength =  projects[index].hasHeaderVideo ? videoLength : 0;
     projects[index].descriptionMediaNumber = mediaNumber;
     projects[index].textLength = text.length;
     projects[index].textDescription = text;
@@ -168,8 +168,7 @@ function extractCampaignMediaNumber(campaignHTML) {
 
   const browser = await puppeteer.launch({
     headless: false,
-    executablePath: executablePath(),
-    // executablePath: executablePath('C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
+    executablePath:'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
     userDataDir:
       "C:\\Users\\Luka\\AppData\\Local\\BraveSoftware\\Brave-Browser\\puppetData",
   });
@@ -184,7 +183,7 @@ function extractCampaignMediaNumber(campaignHTML) {
       const result = await search(projects[index]);
       if (!result.html()) {
         await deleteTextFromSearchField();
-        continue;
+        projects.splice(index, 1);
       } else {
         await gotToSearchResult(result);
         await analyzeProjectPage(index);
