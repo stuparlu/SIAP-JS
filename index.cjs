@@ -115,6 +115,10 @@ function extractCampaignMediaNumber(campaignHTML) {
 
   async function analyzeProjectPage(index) {
     const campaignElement = await page.$(campaignSelector);
+    if (campaignElement == null) {
+      projects.splice(index, 1);
+      return;
+    }
     const campaignHTML = await page.evaluate(
       (element) => element.innerHTML,
       campaignElement
