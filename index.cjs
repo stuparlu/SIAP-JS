@@ -14,16 +14,21 @@ const searchFieldSelector =
   "#global-header > section > div.animation-fade-in.animation-300.animation-easeOutQuart.w100p.t0.l0.absolute.z-guided-search-3.block > div > div > div.p0.flex.z-dropdown-3.relative.shadow-2.items-center > input";
 const searchResultsSelector =
   "#global-header > section > div.animation-fade-in.animation-300.animation-easeOutQuart.w100p.t0.l0.absolute.z-guided-search-3.block > div > div > div.z-dropdown-3.scroll-y.relative.webkit-scrolling.bg-white > ul";
-const videoButtonSelector =
+const videoButtonSelectorFailed =
   "#react-project-header > div > div > div.grid-row.grid-row.mb5-lg.mb0-md.order1-md.order2-lg > div.grid-col-12.grid-col-8-lg > div.mx-4.mx-12-md.mx0-lg.relative.clip > div > div.aspect-ratio--object.flex.z4 > button";
-const headerVideoDivSelector = 
-  "#react-project-header > div > div > div.grid-row.grid-row.mb5-lg.mb0-md.order1-md.order2-lg > div.grid-col-12.grid-col-8-lg > div.mx-4.mx-12-md.mx0-lg.relative.clip > div";
-  const videoTimeSelector =
+const videoButtonSelectorSuccess = 
+  "#video_pitch > div.play_button_container.absolute-center.has_played_hide > button";
+const videoTimeSelectorFailed =
   "#react-project-header > div > div.grid-container.flex.flex-column > div.grid-row.grid-row.mb5-lg.mb0-md.order1-md.order2-lg > div.grid-col-12.grid-col-8-lg > div.mx-4.mx-12-md.mx0-lg.relative.clip > div > div > div > div.flex.flex-auto.items-center.mx2 > time.white.type-14.ml2.basis5";
-
+const videoTimeSelectorSuccess =
+  "#video_pitch > div.player_controls.absolute-bottom.mb3.radius2px.white.bg-green-dark.forces-video-controls_hide.visible > div.right.full-height > time";
+const videoSelectorSuccess = 
+  "#video-section";
+  const fundingUnsuccesfulSelector =
+  "#react-project-header > div > div > div.grid-row.grid-row.mb5-lg.mb0-md.order1-md.order2-lg > div.grid-col-12.grid-col-4-md.hide.block-lg > div.border.p3.soft-black.border-grey-500.bg-grey-300 > div.normal.type-18"
 const shortSleepInterval = 5000;
 const mediumSleepInterval = 7000;
-const longSleepInterval = 15000;
+const longSleepInterval = 12000;
 
 const sleep = (waitTimeInMs) =>
   new Promise((resolve) => setTimeout(resolve, waitTimeInMs));
@@ -124,15 +129,52 @@ function extractCampaignMediaNumber(campaignHTML) {
       campaignElement
     );
 
+    var fundingFail = false;
+    const fundingUnsuccesfulDiv = await page.$(fundingUnsuccesfulSelector);
+    if (fundingUnsuccesfulDiv != null) {
+      const fundingUnsuccesfulHTML = await page.evaluate(
+        (element) => element.innerHTML,
+        fundingUnsuccesfulDiv
+      );
+
+      decoded = he.decode(fundingUnsuccesfulHTML);
+      var sel = cheerio.load(decoded);
+      const result = sel(`div:contains("Funding Unsuccessful")`);
+      fundingFail = result
+    }
+
+    var videoButtonSelector = ""
+    var videoTimeSelector = ""
+    if (fundingFail) {
+      console.log("fail");
+
+      videoButtonSelector = videoButtonSelectorFailed;
+      videoTimeSelector = videoTimeSelectorFailed;
+    } else {
+      console.log("success");
+      videoButtonSelector = videoButtonSelectorSuccess;
+      videoTimeSelector = videoTimeSelectorSuccess;
+    }
+
+
     let hasHeaderVideo = false;
     let videoLength = 0;
 
     const videoButton = await page.$(videoButtonSelector);
     if (videoButton) {
       await videoButton.click();
-      await sleep(longSleepInterval);
-      const headerVideoDiv = await page.$(headerVideoDivSelector);
+
+      await sleep(mediumSleepInterval);
+      if (!fundingFail) {
+        const element = await page.$(videoSelectorSuccess);
+        const box = await element.boundingBox();
+        const x = box.x + box.width / 2;
+        const y = box.y + box.height / 2;
+        const mouse = page.mouse;
+        await mouse.move(x, y);
+      }
       const videoTimeElement = await page.$(videoTimeSelector);
+      console.log(videoTimeElement);
       const videoLengthElementHTML = await page.evaluate(
         (element) => element.innerHTML,
           videoTimeElement

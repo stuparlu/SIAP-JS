@@ -20,15 +20,15 @@ function saveDataset(projects) {
 (async () => {
 
 projects = loadDataset();
-//  projects = projects.slice(15000, 30000);
-//  console.log(projects.length);
+// projects = projects.slice(0, 15000);
+// console.log(projects.length);
 
-//  saveDataset(projects);
-processed = 0;
+// saveDataset(projects);
+processed = 0
 for (let index in projects) {
-    if (projects[index].processed) {
-        processed++;
-    }
-}
-console.log(processed);
+     if (projects[index].processed) {
+         processed++;
+     }
+ }
+ console.log(processed);
 })();
